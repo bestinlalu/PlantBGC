@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlantBGC — Plant BGC Prediction</title>
+  <style>
+    /* ── Reset & tokens ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green-dark:   #1a6b3c;
+      --green-mid:    #2d8653;
+      --green-light:  #e8f5ee;
+      --green-border: #b7ddc8;
+      --accent:       #f0a500;
+      --text:         #1e2a22;
+      --text-muted:   #5a6e62;
+      --bg:           #f7faf8;
+      --white:        #ffffff;
+      --radius:       8px;
+      --shadow:       0 2px 12px rgba(0,0,0,0.07);
+      --font:         'Segoe UI', system-ui, -apple-system, sans-serif;
+      --mono:         'Consolas', 'Menlo', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    /* ── Header / Nav ───────────────────────────────────────────────────── */
+    header {
+      background: var(--green-dark);
+      color: var(--white);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+    }
+
+    .logo {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+
+    .logo-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .logo-subtitle {
+      font-size: 11px;
+      opacity: 0.75;
+      font-weight: 400;
+      letter-spacing: 0.2px;
+    }
+
+    nav { display: flex; gap: 4px; }
+
+    nav a {
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 5px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    nav a:hover {
+      background: rgba(255,255,255,0.12);
+      color: var(--white);
+    }
+
+    /* ── Hero ───────────────────────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%);
+      color: var(--white);
+      padding: 64px 24px 56px;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: 32px;
+      font-weight: 700;
+      max-width: 740px;
+      margin: 0 auto 16px;
+      line-height: 1.3;
+    }
+
+    .hero p {
+      font-size: 15px;
+      opacity: 0.85;
+      max-width: 560px;
+      margin: 0 auto 28px;
+    }
+
+    .hero-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    .btn {
+      display: inline-block;
+      padding: 10px 24px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      border: none;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    .btn-primary {
+      background: var(--white);
+      color: var(--green-dark);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--white);
+      border: 1.5px solid rgba(255,255,255,0.6);
+    }
+
+    /* ── Page wrapper ───────────────────────────────────────────────────── */
+    .page { max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+
+    /* ── Section titles ─────────────────────────────────────────────────── */
+    .section { margin-top: 60px; }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--green-dark);
+      border-bottom: 2px solid var(--green-border);
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+    }
+
+    /* ── Intro ──────────────────────────────────────────────────────────── */
+    .intro-text {
+      background: var(--white);
+      border: 1px solid var(--green-border);
+      border-left: 4px solid var(--green-mid);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      color: var(--text-muted);
+      font-size: 14.5px;
+      line-height: 1.75;
+    }
+
+    /* ── Form card ──────────────────────────────────────────────────────── */
+    #submit { scroll-margin-top: 80px; }
+
+    .form-card {
+      background: var(--white);
+      border: 1px solid var(--green-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 36px 40px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .form-card h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--green-dark);
+      margin-bottom: 28px;
+    }
+
+    .form-row { margin-bottom: 20px; }
+
+    .form-row label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .form-row label .optional {
+      font-weight: 400;
+      color: var(--text-muted);
+      font-size: 12px;
+      margin-left: 4px;
+    }
+
+    .form-row input[type="text"],
+    .form-row input[type="email"],
+    .form-row select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #c8d8ce;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: var(--font);
+      color: var(--text);
+      background: var(--white);
+      transition: border-color 0.15s, box-shadow 0.15s;
+      appearance: none;
+    }
+
+    .form-row input:focus,
+    .form-row select:focus {
+      outline: none;
+      border-color: var(--green-mid);
+      box-shadow: 0 0 0 3px rgba(45,134,83,0.12);
+    }
+
+    /* File upload zone */
+    .file-zone {
+      border: 2px dashed var(--green-border);
+      border-radius: var(--radius);
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      background: var(--green-light);
+    }
+
+    .file-zone:hover, .file-zone.dragover {
+      border-color: var(--green-mid);
+      background: #d8eedf;
+    }
+
+    .file-zone input[type="file"] { display: none; }
+
+    .file-zone-icon { width: 28px; height: 28px; margin-bottom: 6px; }
+
+    .file-zone-label {
+      font-size: 13.5px;
+      color: var(--green-dark);
+      font-weight: 600;
+    }
+
+    .file-zone-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .file-zone-selected {
+      font-size: 13px;
+      color: var(--green-dark);
+      margin-top: 8px;
+      font-weight: 500;
+    }
+
+    /* Two-col grid for dropdowns */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+
+    /* Select arrow */
+    .select-wrapper { position: relative; }
+
+    .select-wrapper::after {
+      content: '▾';
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* Toggle switch */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-top: 1px solid #eaf0ec;
+      margin-top: 4px;
+    }
+
+    .toggle-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .toggle-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 42px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input { display: none; }
+
+    .toggle-track {
+      position: absolute;
+      inset: 0;
+      background: #c8d8ce;
+      border-radius: 99px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      background: white;
+      border-radius: 50%;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .toggle-switch input:checked + .toggle-track { background: var(--green-mid); }
+    .toggle-switch input:checked + .toggle-track::after { transform: translateX(18px); }
+
+    /* Submit button */
+    .btn-submit {
+      width: 100%;
+      padding: 13px;
+      background: var(--green-dark);
+      color: var(--white);
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.15s, transform 0.1s;
+      letter-spacing: 0.2px;
+    }
+
+    .btn-submit:hover { background: var(--green-mid); transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    /* Progress bar */
+    .progress-wrap { display: none; margin-top: 18px; }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #dde8e2;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--green-mid);
+      border-radius: 99px;
+      transition: width 0.2s;
+    }
+
+    .progress-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 5px;
+      text-align: center;
+    }
+
+    /* Alerts */
+    .alert {
+      display: none;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 13.5px;
+      margin-top: 16px;
+      border: 1px solid transparent;
+    }
+
+    .alert-success {
+      background: #d4f0e0;
+      color: #155724;
+      border-color: #b7ddc8;
+    }
+
+    .alert-error {
+      background: #fde8e8;
+      color: #7b1d1d;
+      border-color: #f5c6c6;
+    }
+
+    /* Job ID badge */
+    .job-id {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: rgba(0,0,0,0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* ── Output info ────────────────────────────────────────────────────── */
+    .output-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .output-chip {
+      background: var(--white);
+      border: 1px solid var(--green-border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      font-size: 13.5px;
+    }
+
+    .output-chip .chip-name {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--green-dark);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .output-chip .chip-desc {
+      color: var(--text-muted);
+      font-size: 12.5px;
+    }
+
+    /* ── Example section ────────────────────────────────────────────────── */
+    #example { scroll-margin-top: 80px; }
+
+    .code-block {
+      background: #1e2a22;
+      color: #a8d5b5;
+      font-family: var(--mono);
+      font-size: 13.5px;
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      margin: 10px 0;
+      overflow-x: auto;
+      line-height: 1.7;
+      position: relative;
+    }
+
+    .code-block .comment { color: #6a9478; }
+    .code-block .cmd     { color: #7ec89e; font-weight: 600; }
+    .code-block .flag    { color: #a8d8ea; }
+    .code-block .arg     { color: #f5c97a; }
+
+    /* ── Footer ─────────────────────────────────────────────────────────── */
+    footer {
+      background: var(--green-dark);
+      color: rgba(255,255,255,0.65);
+      text-align: center;
+      font-size: 13px;
+      padding: 24px;
+      margin-top: 80px;
+    }
+
+    footer a { color: rgba(255,255,255,0.8); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ───────────────────────────────────────────────────────────── -->
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <span class="logo-title">PlantBGC</span>
+      <span class="logo-subtitle">AI-assisted Plant Biosynthetic Gene Cluster Prediction</span>
+    </div>
+    <nav>
+      <a href="#home">Home</a>
+      <a href="#submit">Submit Job</a>
+      <a href="#example">Example</a>
+      <a href="#docs">Documentation</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ── Hero ─────────────────────────────────────────────────────────────── -->
+<section class="hero" id="home">
+  <h1>PlantBGC predicts compact candidate biosynthetic gene cluster loci from plant genomic or CDS sequences.</h1>
+  <p>Upload your genome, receive annotated BGC candidate regions by email.</p>
+  <div class="hero-buttons">
+    <a href="#submit" class="btn btn-primary">Submit a Job</a>
+    <a href="#example" class="btn btn-outline">View Example</a>
+  </div>
+</section>
+
+<!-- ── Page content ─────────────────────────────────────────────────────── -->
+<div class="page">
+
+  <!-- Intro -->
+  <div class="section">
+    <div class="section-title">About PlantBGC</div>
+    <div class="intro-text">
+      PlantBGC is a Transformer-based framework for plant BGC discovery.
+      It converts plant sequences into Pfam-domain representations,
+      predicts candidate BGC loci using a three-stage training strategy
+      (microbial supervision → label-free plant domain adaptation → optional weak supervision),
+      and returns downloadable results by email.
+    </div>
+  </div>
+
+  <!-- Submit form -->
+  <div class="section" id="submit">
+    <div class="section-title">Submit a Job</div>
+    <div class="form-card">
+      <h2>Job Submission</h2>
+      <form id="submitForm" novalidate>
+
+        <div class="form-row">
+          <label for="jobName">Job Name <span class="optional">(optional)</span></label>
+          <input type="text" id="jobName" placeholder="e.g. Arabidopsis_chr1_run1" maxlength="200" />
+        </div>
+
+        <div class="form-row">
+          <label for="email">Email Address <span style="color:#c0392b">*</span></label>
+          <input type="email" id="email" placeholder="you@university.edu" required />
+        </div>
+
+        <div class="form-row">
+          <label>Input File <span style="color:#c0392b">*</span></label>
+          <div class="file-zone" id="fileZone">
+            <input type="file" id="genomeFile" accept=".fna,.fa,.fasta,.gbk,.gbff" required />
+            <img class="file-zone-icon" src="/icons/folder.png" alt="" />
+            <div class="file-zone-label">Click to browse or drag &amp; drop</div>
+            <div class="file-zone-hint">Accepted formats: .fna &nbsp;·&nbsp; .fa &nbsp;·&nbsp; .fasta &nbsp;·&nbsp; .gbk &nbsp;·&nbsp; .gbff</div>
+            <div class="file-zone-selected" id="selectedFile"></div>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-row">
+            <label for="inputType">Input Type</label>
+            <div class="select-wrapper">
+              <select id="inputType">
+                <option value="genome_dna">Genome DNA</option>
+                <option value="cds_nucleotide">CDS Nucleotide</option>
+                <option value="protein_fasta">Protein FASTA</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Allow use for training</div>
+            <div class="toggle-hint">Contributed files may be used to improve future PlantBGC models</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="allowTraining" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">Run PlantBGC</button>
+      </form>
+
+      <!-- Upload progress -->
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-text" id="progressText">Uploading…</div>
+      </div>
+
+      <!-- Alerts -->
+      <div class="alert alert-success" id="alertSuccess"></div>
+      <div class="alert alert-error" id="alertError"></div>
+    </div>
+  </div>
+
+  <!-- Output info -->
+  <div class="section">
+    <div class="section-title">Output</div>
+    <p style="color:var(--text-muted);font-size:14px;margin-bottom:16px;">
+      Results will be sent to the provided email address with a download link.
+      Returned files may include:
+    </p>
+    <div class="output-grid">
+      <div class="output-chip">
+        <div class="chip-name">*.bgc.tsv</div>
+        <div class="chip-desc">Candidate BGC prediction table with locus coordinates and scores</div>
+      </div>
+      <div class="output-chip">
+        <div class="chip-name">*.pfam.tsv</div>
+        <div class="chip-desc">Per-protein Pfam domain annotation and BGC-likeness scores</div>
+      </div>
+      <div class="output-chip">
+        <div class="chip-name">*.full.gbk</div>
+        <div class="chip-desc">Full annotated GenBank file with all predicted features</div>
+      </div>
+      <div class="output-chip">
+        <div class="chip-name">*.bgc.gbk</div>
+        <div class="chip-desc">GenBank file filtered to BGC candidate regions only</div>
+      </div>
+      <div class="output-chip">
+        <div class="chip-name">LOG.txt</div>
+        <div class="chip-desc">Full run log for reproducibility and debugging</div>
+      </div>
+    </div>
+    <p style="color:var(--text-muted);font-size:13px;margin-top:14px;">
+      No online visualization is provided. Results are returned as downloadable files.
+    </p>
+  </div>
+
+  <!-- Example section -->
+  <div class="section" id="example">
+    <div class="section-title">Example Usage</div>
+    <p style="color:var(--text-muted);font-size:14px;margin-bottom:12px;">
+      PlantBGC can also be run locally via the command line:
+    </p>
+
+    <div class="code-block">
+      <span class="comment"># Full prediction pipeline: annotate + detect BGC candidate loci</span><br>
+      <span class="cmd">plantbgc Predict</span>
+      <span class="flag"> --output</span>
+      <span class="arg"> prediction_output/</span>
+      <span class="flag"> --score</span>
+      <span class="arg"> 0.5</span>
+      <span class="flag"> --min-proteins</span>
+      <span class="arg"> 3</span>
+      <span class="arg"> input.fna</span>
+    </div>
+
+    <div class="code-block">
+      <span class="comment"># Protein FASTA input (skip gene calling)</span><br>
+      <span class="cmd">plantbgc Predict</span>
+      <span class="flag"> --protein</span>
+      <span class="flag"> --output</span>
+      <span class="arg"> prediction_output/</span>
+      <span class="arg"> proteins.fasta</span>
+    </div>
+  </div>
+
+  <!-- Documentation -->
+  <div class="section" id="docs">
+    <div class="section-title">Documentation</div>
+    <p style="color:var(--text-muted);font-size:14px;">
+      Full documentation including installation instructions, data format specifications,
+      and parameter descriptions are available in the
+      <a href="https://github.com/plantbgc" style="color:var(--green-dark)">PlantBGC GitHub repository</a>.
+    </p>
+  </div>
+
+  <!-- Contact -->
+  <div class="section" id="contact">
+    <div class="section-title">Contact</div>
+    <p style="color:var(--text-muted);font-size:14px;">
+      For questions or issues, please open an issue on GitHub or contact the development team at
+      <a href="mailto:blalu@ncsu.edu" style="color:var(--green-dark)">blalu@ncsu.edu</a> or
+      <a href="mailto:yzhao66@ncsu.edu" style="color:var(--green-dark)">yzhao66@ncsu.edu</a>.
+    </p>
+  </div>
+
+</div><!-- /page -->
+
+<!-- ── Footer ───────────────────────────────────────────────────────────── -->
+<footer>
+  <p>
+    PlantBGC &nbsp;·&nbsp; Plant Biosynthetic Gene Cluster Prediction &nbsp;·&nbsp;
+    Manuscript in preparation (2026) &nbsp;·&nbsp;
+    <a href="https://github.com/plantbgc">GitHub</a>
+  </p>
+</footer>
+
+<!-- ── JavaScript ────────────────────────────────────────────────────────── -->
+<script>
+  // ── File zone interaction ──────────────────────────────────────────────
+  const fileZone     = document.getElementById('fileZone');
+  const fileInput    = document.getElementById('genomeFile');
+  const selectedFile = document.getElementById('selectedFile');
+
+  fileZone.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files[0];
+    selectedFile.textContent = f ? `Selected: ${f.name} (${(f.size / 1024 / 1024).toFixed(2)} MB)` : '';
+  });
+
+  fileZone.addEventListener('dragover', e => { e.preventDefault(); fileZone.classList.add('dragover'); });
+  fileZone.addEventListener('dragleave', () => fileZone.classList.remove('dragover'));
+  fileZone.addEventListener('drop', e => {
+    e.preventDefault();
+    fileZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) {
+      fileInput.files = e.dataTransfer.files;
+      fileInput.dispatchEvent(new Event('change'));
+    }
+  });
+
+  // ── Form submission ────────────────────────────────────────────────────
+  document.getElementById('submitForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const email         = document.getElementById('email').value.trim();
+    const jobName       = document.getElementById('jobName').value.trim();
+    const inputType     = document.getElementById('inputType').value;
+    const runMode       = 'predict_bgc';
+    const allowTraining = document.getElementById('allowTraining').checked;
+    const file          = fileInput.files[0];
+
+    const submitBtn    = document.getElementById('submitBtn');
+    const progressWrap = document.getElementById('progressWrap');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const alertSuccess = document.getElementById('alertSuccess');
+    const alertError   = document.getElementById('alertError');
+
+    // Reset alerts
+    alertSuccess.style.display = 'none';
+    alertError.style.display   = 'none';
+
+    if (!email) { showError('Please enter your email address.'); return; }
+    if (!file)  { showError('Please select a genome file.'); return; }
+
+    // Build multipart form
+    const formData = new FormData();
+    formData.append('email',           email);
+    formData.append('job_name',        jobName);
+    formData.append('input_type',      inputType);
+    formData.append('run_mode',        runMode);
+    formData.append('use_for_training', allowTraining);
+    formData.append('file',            file);
+
+    submitBtn.disabled = true;
+    progressWrap.style.display = 'block';
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/v1/analyze', true);
+
+    xhr.upload.addEventListener('progress', function(e) {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        progressFill.style.width = pct + '%';
+        progressText.textContent = pct < 100
+          ? `Uploading: ${pct}%`
+          : 'Upload complete — queueing analysis…';
+      }
+    });
+
+    xhr.onload = function() {
+      submitBtn.disabled = false;
+      progressWrap.style.display = 'none';
+      progressFill.style.width = '0%';
+
+      let response;
+      try { response = JSON.parse(xhr.responseText); } catch(_) { response = {}; }
+
+      if (xhr.status === 200) {
+        alertSuccess.innerHTML =
+          `✅ <strong>Job queued successfully!</strong><br>` +
+          `Job ID: <span class="job-id">${response.job_id}</span><br>` +
+          `You will receive a download link at <strong>${email}</strong> when the analysis is complete (~10 hours).`;
+        alertSuccess.style.display = 'block';
+        document.getElementById('submitForm').reset();
+        selectedFile.textContent = '';
+      } else {
+        showError(response.detail || 'An unexpected error occurred. Please try again.');
+      }
+    };
+
+    xhr.onerror = function() {
+      submitBtn.disabled = false;
+      progressWrap.style.display = 'none';
+      showError('Network error — please check your connection and try again.');
+    };
+
+    xhr.send(formData);
+
+    function showError(msg) {
+      alertError.textContent = '⚠️ ' + msg;
+      alertError.style.display = 'block';
+    }
+  });
+</script>
+</body>
+</html>

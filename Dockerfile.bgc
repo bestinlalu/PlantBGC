@@ -1,0 +1,67 @@
+# BGC Worker image — must stay on Python 3.7 (plantbgc PyPI constraint: >=3.6,<3.8)
+# Force x86_64 — tensorflow==1.15.4 and other plantbgc deps were never built for ARM.
+# On Apple Silicon this runs under Rosetta/QEMU emulation.
+FROM --platform=linux/amd64 python:3.7-slim
+
+WORKDIR /app
+
+# Base build tools + wget for downloading binaries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    wget \
+    tar \
+    pkg-config \
+    libfreetype6-dev \
+    libpng-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── HMMER 3.1b2 (prebuilt Linux x86_64 binary) ────────────────────────────
+# Only 3.0 / 3.1 are compatible with plantbgc. 3.1b2 is the last 3.1 release.
+# Using the prebuilt binary avoids compiling from source.
+RUN wget -q http://eddylab.org/software/hmmer3/3.1b2/hmmer-3.1b2-linux-intel-x86_64.tar.gz \
+    && tar -xzf hmmer-3.1b2-linux-intel-x86_64.tar.gz \
+    && cp hmmer-3.1b2-linux-intel-x86_64/binaries/* /usr/local/bin/ \
+    && rm -rf hmmer-3.1b2-linux-intel-x86_64 hmmer-3.1b2-linux-intel-x86_64.tar.gz
+
+# ── Prodigal (latest stable — no strict version requirement) ───────────────
+RUN wget -q https://github.com/hyattpd/Prodigal/releases/download/v2.6.3/prodigal.linux \
+    -O /usr/local/bin/prodigal \
+    && chmod +x /usr/local/bin/prodigal
+
+# Verify both tools are on PATH before proceeding
+RUN hmmscan -h | head -2 && prodigal -v 2>&1 | head -2
+
+# ── Python dependencies ────────────────────────────────────────────────────
+COPY requirements.bgc.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.bgc.txt
+
+# numpy must be installed before plantbgc because pandas==0.24.1 (a plantbgc
+# dependency) builds from source and calls numpy during setup.py metadata generation.
+RUN pip install --no-cache-dir numpy
+
+# Install plantbgc from PyPI (requires Python >=3.6,<3.8 — using Python 3.7)
+RUN pip install --no-cache-dir plantbgc
+
+# Bake trained models + Pfam HMM database into the image at build time.
+# Must run after `pip install plantbgc` — the CLI doesn't exist until then.
+# plantbgc 0.1.1 has a bug in run_hmmpress (calls os.system() then .communicate()
+# on the int return value). os.system() actually runs hmmpress successfully before
+# the crash, so the .h3i index already exists — use -f to force re-press ourselves.
+# The crash also aborts download_files() before it reaches Pfam.clans_1.0.tsv
+# (later in the download list), so fetch that one manually too.
+RUN plantbgc download || true && \
+    hmmpress -f /root/.local/share/plantbgc/data/common/Pfam_1.0.hmm && \
+    wget -q https://github.com/Yuhanzhao-233/PlantBGC/releases/download/v0.1/Pfam.clans_1.0.tsv \
+        -O /root/.local/share/plantbgc/data/common/Pfam.clans_1.0.tsv
+
+# ── Application source ─────────────────────────────────────────────────────
+COPY plantbgc-service /app/plantbgc-service
+
+# Only plantbgc-service needs to be on the path (for src.* imports in bgc_runner).
+# Do NOT add PlantBGC-main here — it would shadow the pip-installed plantbgc
+# package and cause ModuleNotFoundError for submodules not present in the source tree.
+ENV PYTHONPATH="/app/plantbgc-service:${PYTHONPATH}"
+
+# The runner is launched as `python -m src.bgc_runner` from inside plantbgc-service
+WORKDIR /app/plantbgc-service

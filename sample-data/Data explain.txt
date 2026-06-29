@@ -1,0 +1,13 @@
+The files inside the “prepare and pipeline” folder are the input datasets that should be used by the prepare and pipeline commands on the user side.
+
+The files inside the “prepare” folder are the expected output/generated files after running the prepare command. You can compare the two folders to better understand the workflow and output structure.
+
+plantbgc prepare --help (inp.fna out.fna) tsv
+
+Under normal usage, the user input should be the complete genome/CDS dataset, which is the large file:
+
+arabidopsis_cds_from_genomic.fna
+
+However, for website testing or quick debugging purposes, a smaller dataset can also be used:
+
+arabidopsis_cds_from_genomic_sample_50.fna

@@ -1,0 +1,17 @@
+podman run -d \
+  --name postgres_dev \
+  -p 5432:5432 \
+  -e POSTGRES_USER=test \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=plantbgc_db \
+  postgres:15-alpine
+
+  podman run -d \
+    --name redis_dev \
+    -p 6379:6379 \
+    redis:7-alpine
+
+podman run -d \
+  --name redisinsight_dev \
+  -p 5540:5540 \
+  redis/redisinsight:latest
