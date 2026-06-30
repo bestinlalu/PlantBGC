@@ -16,14 +16,13 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# 2. Copy both of your project directories into the container filesystem
+# 2. Copy the project directory into the container filesystem.
+# bgc_web only serves the API/frontend — it never runs plantbgc directly
+# (that's bgc_worker's job, via the pip-installed plantbgc package)
 COPY plantbgc-service /app/plantbgc-service
-COPY PlantBGC-main /app/PlantBGC-main
 
-# 3. Add both folders to the system PYTHONPATH.
-# This ensures that 'import src' works for plantbgc-service, 
-# AND 'import plantbgc' works for your 10-hour scripts.
-ENV PYTHONPATH="/app/plantbgc-service:/app/PlantBGC-main:${PYTHONPATH}"
+# 3. Add plantbgc-service to PYTHONPATH so 'import src' works.
+ENV PYTHONPATH="/app/plantbgc-service:${PYTHONPATH}"
 
 # Expose the port that FastAPI will run on
 EXPOSE 8000

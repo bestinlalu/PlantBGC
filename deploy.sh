@@ -16,13 +16,13 @@ set -e  # Exit immediately if any command fails
 #     is fine — in-flight uploads will just need to be retried by the client.
 
 echo "==> Building updated images..."
-docker compose build
+sudo docker compose build
 
 echo "==> Recreating services with new images (old workers finish current jobs first)..."
-docker compose up -d --scale bgc_worker=2
+sudo docker compose up -d --scale bgc_worker=2
 
 echo "==> Running containers:"
-docker compose ps
+sudo docker compose ps
 
 echo ""
 echo "Done! Run 'docker compose logs -f' to follow logs."

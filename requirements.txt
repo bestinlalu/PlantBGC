@@ -1,0 +1,10 @@
+# Web API dependencies (Python 3.12)
+
+# Web framework & server
+fastapi[standard]==0.115.0
+
+# Database (PostgreSQL)
+sqlalchemy==2.0.32
+psycopg2-binary==2.9.9
+
+pydantic_settings

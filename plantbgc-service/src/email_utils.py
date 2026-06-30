@@ -8,6 +8,7 @@ from email.mime.text import MIMEText
 from typing import Optional
 
 from src.config import settings
+from src.logging_config import logger
 
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587
@@ -27,9 +28,9 @@ def send_email(to_email: str, subject: str, body: str) -> None:
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.send_message(msg)
 
-        print(f"Email dispatched to {to_email}: {subject}")
+        logger.info(f"Email dispatched to {to_email}: {subject}")
     except Exception as e:
-        print(f"Email send failed (non-fatal): {e}")
+        logger.error(f"Email send failed (non-fatal): {e}")
 
 
 def send_queued_email(user_email: str, job_id: str, queue_position: int) -> None:
