@@ -1,0 +1,13 @@
+# Never bake the uploads folder into the image — it's bind-mounted at
+# runtime via docker-compose.yml's volumes: section, so anything COPYed
+# here is just wasted build time/image size that gets overwritten anyway.
+plantbgc-service/uploads/
+
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.DS_Store
+.env
+

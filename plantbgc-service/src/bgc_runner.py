@@ -16,7 +16,7 @@ from __future__ import annotations
 import os
 import signal
 import time
-import subprocess  # TODO: Uncomment when plantbgc release with syntax fixes is published
+import subprocess
 from datetime import datetime
 
 from sqlalchemy import create_engine
@@ -26,6 +26,7 @@ from src.config import settings
 from src.database import Base
 from src.models import AnalysisJob
 from src.email_utils import send_started_email, send_completion_email
+from src.logging_config import logger
 
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "15"))  # seconds between DB polls
 
@@ -42,8 +43,8 @@ _draining = False
 
 def _handle_sigterm(signum, frame):
     global _draining
-    print("Received SIGTERM — draining: will finish current job, then exit "
-          "without claiming new ones.")
+    logger.info("Received SIGTERM — draining: will finish current job, then exit "
+                "without claiming new ones.")
     _draining = True
 
 
@@ -92,29 +93,18 @@ def _process_job(job_id: str, input_file_path: str, input_type: str,
     analysis_error: Exception | None = None
 
     try:
-        # ------------------------------------------------------------------
-        # TODO: Uncomment the block below when the plantbgc release with
-        #       syntax fixes is published to PyPI and baked into Dockerfile.bgc
-        #       (also uncomment `import subprocess` at the top of this file
-        #       and `RUN plantbgc download` in Dockerfile.bgc)
-        # ------------------------------------------------------------------
         cmd = _build_plantbgc_command(input_file_path, output_dir, input_type, run_mode)
-        print(f"Running: {' '.join(cmd)}")
+        logger.info(f"Running: {' '.join(cmd)}")
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(
                 f"plantbgc failed (exit {result.returncode}):\n{result.stderr}"
             )
-        print(f"plantbgc stdout:\n{result.stdout}")
-        # ------------------------------------------------------------------
-
-        # Stub: simulate a successful run until plantbgc release is ready
-        cmd = _build_plantbgc_command(input_file_path, output_dir, input_type, run_mode)
-        print(f"[STUB] Would run: {' '.join(cmd)}")
+        logger.info(f"plantbgc stdout:\n{result.stdout}")
 
     except Exception as e:
         analysis_error = e
-        print(f"Job {job_id} analysis FAILED: {e}")
+        logger.error(f"Job {job_id} analysis FAILED: {e}")
 
     # Write final status to DB
     db = SessionLocal()
@@ -124,16 +114,16 @@ def _process_job(job_id: str, input_file_path: str, input_type: str,
             if analysis_error is None:
                 job.status = "COMPLETE"
                 job.output_file_path = output_dir
-                print(f"Job {job_id} marked COMPLETE.")
+                logger.info(f"Job {job_id} marked COMPLETE.")
             else:
                 job.status = "FAILED"
                 job.error_message = str(analysis_error)
-                print(f"Job {job_id} marked FAILED.")
+                logger.info(f"Job {job_id} marked FAILED.")
             job.completed_at = datetime.utcnow()
             db.commit()
     except Exception as e:
         db.rollback()
-        print(f"DB write failed for job {job_id}: {e}")
+        logger.error(f"DB write failed for job {job_id}: {e}")
     finally:
         db.close()
 
@@ -153,11 +143,11 @@ def _process_job(job_id: str, input_file_path: str, input_type: str,
 
 def poll() -> None:
     _wait_for_tables()
-    print(f"BGC runner started. Polling every {POLL_INTERVAL}s for PENDING jobs...")
+    logger.info(f"BGC runner started. Polling every {POLL_INTERVAL}s for PENDING jobs...")
 
     while True:
         if _draining:
-            print("Draining complete — no job in progress. Exiting cleanly.")
+            logger.info("Draining complete — no job in progress. Exiting cleanly.")
             return
 
         db = SessionLocal()
@@ -187,12 +177,12 @@ def poll() -> None:
                 job.status = "STARTED"
                 job.started_at = datetime.utcnow()
                 db.commit()
-                print(f"Claimed job {job_id} | type={input_type} | mode={run_mode}")
+                logger.info(f"Claimed job {job_id} | type={input_type} | mode={run_mode}")
                 send_started_email(user_email, job_id)
 
         except Exception as e:
             db.rollback()
-            print(f"DB poll error: {e}")
+            logger.error(f"DB poll error: {e}")
         finally:
             db.close()
 
@@ -202,7 +192,7 @@ def poll() -> None:
                 _process_job(job_id, input_file_path, input_type or "genome_dna",
                              run_mode or "predict_bgc", user_email)
             except Exception as e:
-                print(f"Job {job_id} raised unhandled exception: {e}")
+                logger.error(f"Job {job_id} raised unhandled exception: {e}")
         else:
             # No pending jobs — wait before next poll
             time.sleep(POLL_INTERVAL)

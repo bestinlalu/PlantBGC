@@ -1,0 +1,9 @@
+# BGC worker dependencies — Python 3.7 only (plantbgc constraint: >=3.6,<3.8)
+# No Celery or Redis — bgc_worker uses DB polling instead (Celery 5.x requires Python >=3.8)
+
+# Database
+sqlalchemy==2.0.32
+psycopg2-binary==2.9.9
+
+# Config — pydantic_settings requires Python 3.8+; use pydantic v1 built-in BaseSettings
+pydantic[dotenv]==1.10.21

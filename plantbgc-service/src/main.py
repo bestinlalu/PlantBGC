@@ -1,6 +1,6 @@
-import io
 import os
 import shutil
+import threading
 import time
 import uuid
 import zipfile
@@ -151,18 +151,49 @@ def download_results(job_id: str, db: Session = Depends(get_db)):
     if not output_dir or not os.path.isdir(output_dir):
         raise HTTPException(status_code=404, detail="Output directory not found on disk.")
 
-    # Stream a zip of the entire output directory back to the client
+    has_files = any(files for _, _, files in os.walk(output_dir))
+    if not has_files:
+        raise HTTPException(
+            status_code=404,
+            detail="Job completed but produced no output files. This usually means "
+                   "no candidate BGCs were found, or the input was too small/short."
+        )
+
+    # Stream a zip of the entire output directory back to the client.
+    # Results can be hundreds of MB (e.g. full.gbk), so we build the zip into
+    # an OS pipe on a background thread instead of buffering it all in memory
+    # first — the writer blocks on the pipe's kernel buffer until the client
+    # reads, giving real streaming with bounded memory and an immediate first
+    # byte (rather than the browser sitting idle while gigabytes get zipped).
     def zip_stream():
-        buffer = io.BytesIO()
-        with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-            for root, _, files in os.walk(output_dir):
-                for filename in files:
-                    file_path = os.path.join(root, filename)
-                    # Store relative path inside the zip so it's clean when extracted
-                    arcname = os.path.relpath(file_path, start=output_dir)
-                    zf.write(file_path, arcname)
-        buffer.seek(0)
-        yield from buffer
+        read_fd, write_fd = os.pipe()
+
+        def _write_zip():
+            try:
+                with os.fdopen(write_fd, "wb") as wf:
+                    with zipfile.ZipFile(wf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+                        for root, _, files in os.walk(output_dir):
+                            for filename in files:
+                                file_path = os.path.join(root, filename)
+                                # Store relative path inside the zip so it's clean when extracted
+                                arcname = os.path.relpath(file_path, start=output_dir)
+                                zf.write(file_path, arcname)
+            except Exception:
+                # Closing the pipe here ends the read loop below, which
+                # surfaces as a truncated download rather than a server hang.
+                pass
+
+        writer = threading.Thread(target=_write_zip, daemon=True)
+        writer.start()
+
+        with os.fdopen(read_fd, "rb") as rf:
+            while True:
+                chunk = rf.read(256 * 1024)
+                if not chunk:
+                    break
+                yield chunk
+
+        writer.join()
 
     zip_filename = f"plantbgc_results_{job_id}.zip"
     return StreamingResponse(
