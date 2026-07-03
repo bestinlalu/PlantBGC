@@ -3,6 +3,7 @@ bgc_worker (Python 3.7), so this module must stay Python 3.7-compatible
 (no `str | None`, no walrus in signatures, etc.)."""
 from __future__ import annotations
 
+import os
 import smtplib
 from email.mime.text import MIMEText
 from typing import Optional
@@ -12,8 +13,8 @@ from src.logging_config import logger
 
 SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 587
-SMTP_USER = "bestinlalu@gmail.com"
-SMTP_PASSWORD = "REDACTED"
+SMTP_USER = os.environ["SMTP_USER"]
+SMTP_PASSWORD = os.environ["SMTP_PASSWORD"]
 
 
 def send_email(to_email: str, subject: str, body: str) -> None:

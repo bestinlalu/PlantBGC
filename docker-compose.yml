@@ -4,6 +4,8 @@ services:
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://test:password@postgres:5432/plantbgc_db
       - UPLOAD_DIR=/app/shared_uploads
@@ -24,6 +26,8 @@ services:
     # current job and exits cleanly (see _handle_sigterm in bgc_runner.py) —
     # this grace period just ensures Docker doesn't SIGKILL it first.
     stop_grace_period: 12h
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://test:password@postgres:5432/plantbgc_db
       - UPLOAD_DIR=/app/shared_uploads
