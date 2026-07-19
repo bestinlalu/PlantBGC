@@ -95,10 +95,12 @@ async def analyze_genome(
         training_path = os.path.join(settings.UPLOAD_DIR, "training", unique_filename)
         shutil.copy2(destination_path, training_path)
 
+    resolved_job_name = job_name.strip() or os.path.splitext(file.filename or "")[0]
+
     db_job = AnalysisJob(
         id=job_id,
         user_email=email,
-        job_name=job_name.strip() or None,
+        job_name=resolved_job_name,
         input_filename=file.filename,
         input_file_path=destination_path,
         input_type=input_type,
@@ -119,7 +121,7 @@ async def analyze_genome(
         .filter(AnalysisJob.created_at <= db_job.created_at)
         .count()
     )
-    send_queued_email(email, str(job_id), queue_position)
+    send_queued_email(email, resolved_job_name, queue_position)
 
     return {
         "job_id": str(job_id),

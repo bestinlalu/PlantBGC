@@ -9,9 +9,9 @@ services:
     environment:
       - DATABASE_URL=postgresql://test:password@postgres:5432/plantbgc_db
       - UPLOAD_DIR=/app/shared_uploads
-      - BASE_URL=http://localhost:8000  # Change to your public domain in production
+      - BASE_URL=https://plantbgc.csc.ncsu.edu
     volumes:
-      - ./plantbgc-service/uploads:/app/shared_uploads
+      - /PlantBGC/uploads:/app/shared_uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -31,10 +31,10 @@ services:
     environment:
       - DATABASE_URL=postgresql://test:password@postgres:5432/plantbgc_db
       - UPLOAD_DIR=/app/shared_uploads
-      - BASE_URL=http://localhost:8000  # Change to your public domain in production
+      - BASE_URL=https://plantbgc.csc.ncsu.edu
       - PYTHONUNBUFFERED=1
     volumes:
-      - ./plantbgc-service/uploads:/app/shared_uploads
+      - /PlantBGC/uploads:/app/shared_uploads
     depends_on:
       postgres:
         condition: service_healthy

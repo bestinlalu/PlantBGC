@@ -34,11 +34,11 @@ def send_email(to_email: str, subject: str, body: str) -> None:
         logger.error(f"Email send failed (non-fatal): {e}")
 
 
-def send_queued_email(user_email: str, job_id: str, queue_position: int) -> None:
-    subject = f"Analysis Queued — Job #{job_id}"
+def send_queued_email(user_email: str, job_name: str, queue_position: int) -> None:
+    subject = f"Analysis Queued — {job_name}"
     body = (
         f"Hello!\n\n"
-        f"Your PlantBGC genome analysis (Job {job_id}) has been queued.\n"
+        f"Your PlantBGC genome analysis \"{job_name}\" has been queued.\n"
         f"Current position in queue: {queue_position}\n\n"
         f"You'll receive another email once processing starts, and again when "
         f"results are ready.\n\n"
@@ -47,34 +47,35 @@ def send_queued_email(user_email: str, job_id: str, queue_position: int) -> None
     send_email(user_email, subject, body)
 
 
-def send_started_email(user_email: str, job_id: str) -> None:
-    subject = f"Analysis Started — Job #{job_id}"
+def send_started_email(user_email: str, job_name: str) -> None:
+    subject = f"Analysis Started — {job_name}"
     body = (
         f"Hello!\n\n"
-        f"Your PlantBGC genome analysis (Job {job_id}) has started processing.\n\n"
+        f"Your PlantBGC genome analysis \"{job_name}\" has started processing.\n\n"
         f"You'll receive another email once your results are ready.\n\n"
         f"Thank you for using PlantBGC."
     )
     send_email(user_email, subject, body)
 
 
-def send_completion_email(user_email: str, job_id: str, status: str,
-                           error_message: Optional[str] = None) -> None:
-    download_url = f"{settings.BASE_URL}/api/v1/jobs/{job_id}/download"
+def send_completion_email(user_email: str, job_name: str, status: str,
+                           error_message: Optional[str] = None,
+                           job_id: Optional[str] = None) -> None:
+    download_url = f"{settings.BASE_URL}/api/v1/jobs/{job_id}/download" if job_id else None
 
     if status == "COMPLETE":
-        subject = f"Analysis Complete — Job #{job_id}"
+        subject = f"Analysis Complete — {job_name}"
         body = (
             f"Hello!\n\n"
-            f"Your PlantBGC genome analysis (Job {job_id}) is complete.\n\n"
+            f"Your PlantBGC genome analysis \"{job_name}\" is complete.\n\n"
             f"Download your results here:\n{download_url}\n\n"
             f"Thank you for using PlantBGC."
         )
     else:
-        subject = f"Analysis Failed — Job #{job_id}"
+        subject = f"Analysis Failed — {job_name}"
         body = (
             f"Hello,\n\n"
-            f"Unfortunately your PlantBGC genome analysis (Job {job_id}) failed.\n"
+            f"Unfortunately your PlantBGC genome analysis \"{job_name}\" failed.\n"
             f"Error: {error_message or 'Unknown error'}\n\n"
             f"Please try again or contact support."
         )

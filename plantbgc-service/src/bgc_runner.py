@@ -85,7 +85,7 @@ def _build_plantbgc_command(input_file_path: str, output_dir: str,
 # ── Job processor ──────────────────────────────────────────────────────────────
 
 def _process_job(job_id: str, input_file_path: str, input_type: str,
-                 run_mode: str, user_email: str) -> None:
+                 run_mode: str, user_email: str, job_name: str) -> None:
     """Run the plantbgc command for one job, then update DB and send email."""
     output_dir = os.path.join(settings.UPLOAD_DIR, "results", job_id)
     os.makedirs(output_dir, exist_ok=True)
@@ -130,9 +130,10 @@ def _process_job(job_id: str, input_file_path: str, input_type: str,
     # Send completion email (always, regardless of success/failure)
     send_completion_email(
         user_email=user_email,
-        job_id=job_id,
+        job_name=job_name,
         status="COMPLETE" if analysis_error is None else "FAILED",
         error_message=str(analysis_error) if analysis_error else None,
+        job_id=job_id,
     )
 
     if analysis_error:
@@ -151,7 +152,7 @@ def poll() -> None:
             return
 
         db = SessionLocal()
-        job_id = input_file_path = input_type = run_mode = user_email = None
+        job_id = input_file_path = input_type = run_mode = user_email = job_name = None
 
         try:
             # SELECT FOR UPDATE SKIP LOCKED — atomically claims one PENDING job.
@@ -173,12 +174,13 @@ def poll() -> None:
                 input_type = job.input_type
                 run_mode = job.run_mode
                 user_email = job.user_email
+                job_name = job.job_name or job.input_filename or job_id
 
                 job.status = "STARTED"
                 job.started_at = datetime.utcnow()
                 db.commit()
-                logger.info(f"Claimed job {job_id} | type={input_type} | mode={run_mode}")
-                send_started_email(user_email, job_id)
+                logger.info(f"Claimed job {job_id} | name={job_name} | type={input_type} | mode={run_mode}")
+                send_started_email(user_email, job_name)
 
         except Exception as e:
             db.rollback()
@@ -190,7 +192,8 @@ def poll() -> None:
             # Process outside the DB session (avoids holding connection during long run)
             try:
                 _process_job(job_id, input_file_path, input_type or "genome_dna",
-                             run_mode or "predict_bgc", user_email)
+                             run_mode or "predict_bgc", user_email,
+                             job_name or job_id)
             except Exception as e:
                 logger.error(f"Job {job_id} raised unhandled exception: {e}")
         else:
