@@ -25,7 +25,7 @@ from sqlalchemy.orm import sessionmaker
 from src.config import settings
 from src.database import Base
 from src.models import AnalysisJob
-from src.email_utils import send_started_email, send_completion_email
+from src.email_utils import send_started_email, send_completion_email, send_failure_admin_email
 from src.logging_config import logger
 
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "15"))  # seconds between DB polls
@@ -128,13 +128,25 @@ def _process_job(job_id: str, input_file_path: str, input_type: str,
         db.close()
 
     # Send completion email (always, regardless of success/failure)
+    status = "COMPLETE" if analysis_error is None else "FAILED"
     send_completion_email(
         user_email=user_email,
         job_name=job_name,
-        status="COMPLETE" if analysis_error is None else "FAILED",
+        status=status,
         error_message=str(analysis_error) if analysis_error else None,
         job_id=job_id,
     )
+
+    if analysis_error is not None:
+        log_path = os.path.join(output_dir, "LOG.txt")
+        send_failure_admin_email(
+            job_name=job_name,
+            job_id=job_id,
+            user_email=user_email,
+            error_message=str(analysis_error),
+            log_path=log_path if os.path.isfile(log_path) else None,
+            input_file_path=input_file_path,
+        )
 
     if analysis_error:
         raise analysis_error

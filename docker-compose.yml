@@ -39,6 +39,20 @@ services:
       postgres:
         condition: service_healthy
 
+  test:
+    profiles: ["test"]      # only starts with: docker compose --profile test run --rm test
+    build: .
+    command: python -m pytest /app/plantbgc-service/tests/ -v
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://test:password@postgres:5432/plantbgc_db
+      - UPLOAD_DIR=/tmp/plantbgc_test_uploads
+      - BASE_URL=http://testserver
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:15-alpine
     environment:

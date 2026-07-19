@@ -45,7 +45,7 @@ app.mount("/icons", StaticFiles(directory=os.path.join(current_dir, "icons")), n
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """Serves the front-end dashboard UI directly to browser requests."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 ALLOWED_EXTENSIONS = {".fna", ".fa", ".fasta", ".gbk", ".gbff"}
@@ -161,12 +161,13 @@ def download_results(job_id: str, db: Session = Depends(get_db)):
                    "no candidate BGCs were found, or the input was too small/short."
         )
 
-    # Stream a zip of the entire output directory back to the client.
-    # Results can be hundreds of MB (e.g. full.gbk), so we build the zip into
-    # an OS pipe on a background thread instead of buffering it all in memory
-    # first — the writer blocks on the pipe's kernel buffer until the client
-    # reads, giving real streaming with bounded memory and an immediate first
-    # byte (rather than the browser sitting idle while gigabytes get zipped).
+    DOWNLOAD_EXTENSIONS = {".json", ".gbk", ".tsv"}
+
+    def _include_in_download(filename: str) -> bool:
+        if filename.endswith(".full.gbk"):
+            return False
+        return os.path.splitext(filename)[1].lower() in DOWNLOAD_EXTENSIONS
+
     def zip_stream():
         read_fd, write_fd = os.pipe()
 
@@ -176,13 +177,12 @@ def download_results(job_id: str, db: Session = Depends(get_db)):
                     with zipfile.ZipFile(wf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
                         for root, _, files in os.walk(output_dir):
                             for filename in files:
+                                if not _include_in_download(filename):
+                                    continue
                                 file_path = os.path.join(root, filename)
-                                # Store relative path inside the zip so it's clean when extracted
                                 arcname = os.path.relpath(file_path, start=output_dir)
                                 zf.write(file_path, arcname)
             except Exception:
-                # Closing the pipe here ends the read loop below, which
-                # surfaces as a truncated download rather than a server hang.
                 pass
 
         writer = threading.Thread(target=_write_zip, daemon=True)

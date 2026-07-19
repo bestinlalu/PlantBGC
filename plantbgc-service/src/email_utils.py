@@ -5,8 +5,11 @@ from __future__ import annotations
 
 import os
 import smtplib
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Optional
+from email.mime.base import MIMEBase
+from email import encoders
+from typing import List, Optional
 
 from src.config import settings
 from src.logging_config import logger
@@ -17,9 +20,27 @@ SMTP_USER = os.environ["SMTP_USER"]
 SMTP_PASSWORD = os.environ["SMTP_PASSWORD"]
 
 
-def send_email(to_email: str, subject: str, body: str) -> None:
+def send_email(to_email: str, subject: str, body: str,
+               attachments: Optional[List[str]] = None) -> None:
     try:
-        msg = MIMEText(body)
+        if attachments:
+            msg = MIMEMultipart()
+            msg.attach(MIMEText(body))
+            for path in attachments:
+                if not os.path.isfile(path):
+                    continue
+                part = MIMEBase("application", "octet-stream")
+                with open(path, "rb") as f:
+                    part.set_payload(f.read())
+                encoders.encode_base64(part)
+                part.add_header(
+                    "Content-Disposition",
+                    f"attachment; filename={os.path.basename(path)}"
+                )
+                msg.attach(part)
+        else:
+            msg = MIMEText(body)
+
         msg["Subject"] = subject
         msg["From"] = SMTP_USER
         msg["To"] = to_email
@@ -56,6 +77,23 @@ def send_started_email(user_email: str, job_name: str) -> None:
         f"Thank you for using PlantBGC."
     )
     send_email(user_email, subject, body)
+
+
+def send_failure_admin_email(job_name: str, job_id: str, user_email: str,
+                              error_message: Optional[str],
+                              log_path: Optional[str],
+                              input_file_path: Optional[str]) -> None:
+    subject = f"[PlantBGC] Job Failed — {job_name}"
+    body = (
+        f"A PlantBGC job has failed.\n\n"
+        f"Job Name  : {job_name}\n"
+        f"Job ID    : {job_id}\n"
+        f"Submitted by: {user_email}\n\n"
+        f"Error:\n{error_message or 'Unknown error'}\n\n"
+        f"Log and input file are attached."
+    )
+    attachments = [p for p in [log_path, input_file_path] if p and os.path.isfile(p)]
+    send_email(SMTP_USER, subject, body, attachments=attachments)
 
 
 def send_completion_email(user_email: str, job_name: str, status: str,
