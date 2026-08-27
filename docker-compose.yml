@@ -2,6 +2,7 @@ services:
   bgc_web:
     build: .
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
     ports:
       - "8000:8000"
     env_file:
@@ -25,6 +26,7 @@ services:
     # Analyses can run up to ~10 hours. On SIGTERM the worker finishes its
     # current job and exits cleanly (see _handle_sigterm in bgc_runner.py) —
     # this grace period just ensures Docker doesn't SIGKILL it first.
+    restart: unless-stopped
     stop_grace_period: 12h
     env_file:
       - .env
@@ -43,6 +45,7 @@ services:
     profiles: ["test"]      # only starts with: docker compose --profile test run --rm test
     build: .
     command: python -m pytest /app/plantbgc-service/tests/ -v
+    restart: "no"
     env_file:
       - .env
     environment:
@@ -55,6 +58,7 @@ services:
 
   postgres:
     image: postgres:15-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: test
       POSTGRES_PASSWORD: password
