@@ -4,8 +4,7 @@ FROM --platform=linux/amd64 python:3.7-slim
 WORKDIR /app
 
 # Base build tools + wget for downloading binaries
-# sasl2-bin and sendmail installed together (installing separately breaks SASL auth)
-# /etc/mail is bind-mounted from the host at runtime — reusing Tim's existing config
+# sasl2-bin and sendmail installed together (installing separately requires dpkg-reconfigure)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     wget \
@@ -16,7 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     sasl2-bin \
     sendmail \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /etc/mail/authinfo && chmod 700 /etc/mail/authinfo
 
 # ── HMMER 3.1b2 (prebuilt Linux x86_64 binary) ────────────────────────────
 # Only 3.0 / 3.1 are compatible with plantbgc. 3.1b2 is the last 3.1 release.

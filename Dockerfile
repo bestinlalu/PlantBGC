@@ -4,14 +4,14 @@ FROM python:3.12.13
 # Set the working directory inside the container
 WORKDIR /app
 
-# sasl2-bin and sendmail installed together (installing separately breaks SASL auth)
-# /etc/mail is bind-mounted from the host at runtime — reusing Tim's existing config
+# sasl2-bin and sendmail installed together (installing separately requires dpkg-reconfigure)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     sasl2-bin \
     sendmail \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /etc/mail/authinfo && chmod 700 /etc/mail/authinfo
 
 # 1. UPDATED: Copy requirements.txt directly from your root folder
 COPY requirements.txt .

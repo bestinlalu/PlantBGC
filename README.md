@@ -31,9 +31,14 @@ Port 8000 on the server is firewalled — only the CSC proxy IPs can reach it di
 SMTP_USER=bestinlalu@gmail.com
 ```
 
-- `/etc/mail` on the VM — sendmail is already configured here by the sysadmin (Tim Andrews).
-  The containers bind-mount this directory read-only, reusing the existing Gmail relay config
-  and credentials. No extra setup required.
+- `/etc/msmtprc` on the VM (never committed) — msmtp config with Gmail SMTP credentials.
+  Create it from `msmtprc.example`:
+
+```bash
+sudo cp msmtprc.example /etc/msmtprc
+sudo nano /etc/msmtprc     # fill in SMTP_USER and SMTP_PASSWORD
+sudo chmod 600 /etc/msmtprc
+```
 
 To create a Gmail App Password: Google Account → Security → 2-Step Verification → App Passwords.
 

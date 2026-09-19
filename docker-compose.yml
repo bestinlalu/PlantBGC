@@ -13,7 +13,8 @@ services:
       - BASE_URL=https://plantbgc.csc.ncsu.edu
     volumes:
       - /PlantBGC/uploads:/app/shared_uploads
-      - /etc/mail:/etc/mail:ro
+      - /etc/mail/sendmail.cf:/etc/mail/sendmail.cf:ro
+      - /etc/mail/authinfo/gmail-auth.db:/etc/mail/authinfo/gmail-auth.db:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,7 +39,8 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - /PlantBGC/uploads:/app/shared_uploads
-      - /etc/mail:/etc/mail:ro
+      - /etc/mail/sendmail.cf:/etc/mail/sendmail.cf:ro
+      - /etc/mail/authinfo/gmail-auth.db:/etc/mail/authinfo/gmail-auth.db:ro
     depends_on:
       postgres:
         condition: service_healthy
