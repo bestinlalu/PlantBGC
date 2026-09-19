@@ -10,7 +10,7 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common \
-    && add-apt-repository ppa:deadsnakes/ppa \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
     && apt-get update && apt-get install -y --no-install-recommends \
     python3.7 \
     python3.7-dev \
@@ -27,9 +27,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /etc/mail/authinfo && chmod 700 /etc/mail/authinfo
 
-# Set up pip for Python 3.7 and expose it as `python` / `pip`
-RUN python3.7 -m ensurepip --upgrade && \
-    python3.7 -m pip install --no-cache-dir --upgrade pip && \
+# Set up pip for Python 3.7 (deadsnakes strips ensurepip, so use get-pip.py)
+# and create a `python` symlink so `python -m src.bgc_runner` works.
+RUN wget -q https://bootstrap.pypa.io/pip/3.7/get-pip.py -O /tmp/get-pip.py && \
+    python3.7 /tmp/get-pip.py --no-cache-dir && \
+    rm /tmp/get-pip.py && \
     ln -sf /usr/bin/python3.7 /usr/local/bin/python
 
 # ── HMMER 3.1b2 (prebuilt Linux x86_64 binary) ────────────────────────────
@@ -66,7 +68,10 @@ RUN python3.7 -m pip install --no-cache-dir plantbgc
 # the crash, so the .h3i index already exists — use -f to force re-press ourselves.
 # The crash also aborts download_files() before it reaches Pfam.clans_1.0.tsv
 # (later in the download list), so fetch that one manually too.
-RUN plantbgc download || true && \
+# plantbgc scripts may land in /usr/bin/ or /usr/local/bin/ depending on
+# deadsnakes' sys.prefix; resolve via sysconfig to be version-independent.
+RUN PLANTBGC_BIN=$(python3.7 -c "import sysconfig; print(sysconfig.get_path('scripts'))") && \
+    ${PLANTBGC_BIN}/plantbgc download || true && \
     hmmpress -f /root/.local/share/plantbgc/data/common/Pfam_1.0.hmm && \
     wget -q https://github.com/Yuhanzhao-233/PlantBGC/releases/download/v0.1/Pfam.clans_1.0.tsv \
         -O /root/.local/share/plantbgc/data/common/Pfam.clans_1.0.tsv
