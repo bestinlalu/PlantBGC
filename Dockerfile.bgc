@@ -1,11 +1,20 @@
 # BGC Worker image — must stay on Python 3.7 (plantbgc PyPI constraint: >=3.6,<3.8)
-FROM --platform=linux/amd64 python:3.7-slim
+# ubuntu:24.04 base gives sendmail 8.18.1 matching the host VM.
+# Python 3.7 is sourced from the deadsnakes PPA (Felix Krull) since Ubuntu 24.04
+# only ships Python 3.12 natively.
+FROM --platform=linux/amd64 ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
 
-# Base build tools + wget for downloading binaries
-# sasl2-bin and sendmail installed together (installing separately requires dpkg-reconfigure)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    python3.7 \
+    python3.7-dev \
+    python3.7-distutils \
     build-essential \
     wget \
     tar \
@@ -17,6 +26,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sendmail \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /etc/mail/authinfo && chmod 700 /etc/mail/authinfo
+
+# Set up pip for Python 3.7 and expose it as `python` / `pip`
+RUN python3.7 -m ensurepip --upgrade && \
+    python3.7 -m pip install --no-cache-dir --upgrade pip && \
+    ln -sf /usr/bin/python3.7 /usr/local/bin/python
 
 # ── HMMER 3.1b2 (prebuilt Linux x86_64 binary) ────────────────────────────
 # Only 3.0 / 3.1 are compatible with plantbgc. 3.1b2 is the last 3.1 release.
@@ -36,15 +50,14 @@ RUN hmmscan -h | head -2 && prodigal -v 2>&1 | head -2
 
 # ── Python dependencies ────────────────────────────────────────────────────
 COPY requirements.bgc.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.bgc.txt
+RUN python3.7 -m pip install --no-cache-dir -r requirements.bgc.txt
 
 # numpy must be installed before plantbgc because pandas==0.24.1 (a plantbgc
 # dependency) builds from source and calls numpy during setup.py metadata generation.
-RUN pip install --no-cache-dir numpy
+RUN python3.7 -m pip install --no-cache-dir numpy
 
 # Install plantbgc from PyPI (requires Python >=3.6,<3.8 — using Python 3.7)
-RUN pip install --no-cache-dir plantbgc
+RUN python3.7 -m pip install --no-cache-dir plantbgc
 
 # Bake trained models + Pfam HMM database into the image at build time.
 # Must run after `pip install plantbgc` — the CLI doesn't exist until then.

@@ -3,8 +3,9 @@ bgc_worker (Python 3.7), so this module must stay Python 3.7-compatible
 (no `str | None`, no walrus in signatures, etc.).
 
 Sends via sendmail in MTA mode (-Am flag), relaying through Gmail SMTP.
-sendmail.cf and authinfo/gmail-auth.db are bind-mounted from the host VM
-(configured by Tim Andrews) — credentials never baked into the image.
+Both containers use ubuntu:24.04 so sendmail 8.18.1 matches the host VM.
+sendmail.cf and authinfo/gmail-auth.db are bind-mounted read-only from the
+host VM (configured by Tim Andrews) — credentials never baked into the image.
 """
 from __future__ import annotations
 
@@ -51,7 +52,7 @@ def send_email(to_email: str, subject: str, body: str,
             ["/usr/sbin/sendmail", "-Am", "-t"],
             input=msg.as_bytes(),
             capture_output=True,
-            timeout=30,
+            timeout=60,
         )
         if result.returncode != 0:
             raise RuntimeError(result.stderr.decode())

@@ -1,32 +1,31 @@
-# Use a stable Python base image
-FROM python:3.12.13
+FROM ubuntu:24.04
 
-# Set the working directory inside the container
 WORKDIR /app
 
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ubuntu:24.04 provides sendmail 8.18.1 — same version as the host VM — so the
+# bind-mounted sendmail.cf and gmail-auth.db are version-compatible.
 # sasl2-bin and sendmail installed together (installing separately requires dpkg-reconfigure)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-dev \
     build-essential \
     ca-certificates \
     sasl2-bin \
     sendmail \
+    && rm -f /usr/lib/python3*/EXTERNALLY-MANAGED \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /etc/mail/authinfo && chmod 700 /etc/mail/authinfo
 
-# 1. UPDATED: Copy requirements.txt directly from your root folder
 COPY requirements.txt .
 
-# Install your Python packages
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir --upgrade pip && \
+    pip3 install --no-cache-dir -r requirements.txt
 
-# 2. Copy the project directory into the container filesystem.
-# bgc_web only serves the API/frontend — it never runs plantbgc directly
-# (that's bgc_worker's job, via the pip-installed plantbgc package)
 COPY plantbgc-service /app/plantbgc-service
 
-# 3. Add plantbgc-service to PYTHONPATH so 'import src' works.
 ENV PYTHONPATH="/app/plantbgc-service:${PYTHONPATH}"
 
-# Expose the port that FastAPI will run on
 EXPOSE 8000
