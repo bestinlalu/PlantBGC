@@ -1,11 +1,11 @@
 # BGC Worker image — must stay on Python 3.7 (plantbgc PyPI constraint: >=3.6,<3.8)
-# Force x86_64 — tensorflow==1.15.4 and other plantbgc deps were never built for ARM.
-# On Apple Silicon this runs under Rosetta/QEMU emulation.
 FROM --platform=linux/amd64 python:3.7-slim
 
 WORKDIR /app
 
 # Base build tools + wget for downloading binaries
+# sasl2-bin and sendmail installed together (installing separately breaks SASL auth)
+# /etc/mail is bind-mounted from the host at runtime — reusing Tim's existing config
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     wget \
@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     libfreetype6-dev \
     libpng-dev \
+    ca-certificates \
+    sasl2-bin \
+    sendmail \
     && rm -rf /var/lib/apt/lists/*
 
 # ── HMMER 3.1b2 (prebuilt Linux x86_64 binary) ────────────────────────────

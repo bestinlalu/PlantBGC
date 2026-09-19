@@ -1,23 +1,25 @@
-"""Shared SMTP email sender — imported by both bgc_web (Python 3.12) and
+"""Shared email sender — imported by both bgc_web (Python 3.12) and
 bgc_worker (Python 3.7), so this module must stay Python 3.7-compatible
-(no `str | None`, no walrus in signatures, etc.)."""
+(no `str | None`, no walrus in signatures, etc.).
+
+Sends via sendmail (/usr/sbin/sendmail), relaying through Gmail SMTP.
+/etc/mail is bind-mounted from the host VM, reusing the sysadmin-configured
+sendmail setup (sendmail.cf + SASL credentials).
+"""
 from __future__ import annotations
 
 import os
-import smtplib
+import subprocess
+from email import encoders
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
 from typing import List, Optional
 
 from src.config import settings
 from src.logging_config import logger
 
-SMTP_HOST = "smtp.gmail.com"
-SMTP_PORT = 587
 SMTP_USER = os.environ["SMTP_USER"]
-SMTP_PASSWORD = os.environ["SMTP_PASSWORD"]
 
 
 def send_email(to_email: str, subject: str, body: str,
@@ -45,10 +47,13 @@ def send_email(to_email: str, subject: str, body: str,
         msg["From"] = SMTP_USER
         msg["To"] = to_email
 
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.send_message(msg)
+        result = subprocess.run(
+            ["/usr/sbin/sendmail", "-t"],
+            input=msg.as_bytes(),
+            capture_output=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(result.stderr.decode())
 
         logger.info(f"Email dispatched to {to_email}: {subject}")
     except Exception as e:
@@ -79,23 +84,6 @@ def send_started_email(user_email: str, job_name: str) -> None:
     send_email(user_email, subject, body)
 
 
-def send_failure_admin_email(job_name: str, job_id: str, user_email: str,
-                              error_message: Optional[str],
-                              log_path: Optional[str],
-                              input_file_path: Optional[str]) -> None:
-    subject = f"[PlantBGC] Job Failed — {job_name}"
-    body = (
-        f"A PlantBGC job has failed.\n\n"
-        f"Job Name  : {job_name}\n"
-        f"Job ID    : {job_id}\n"
-        f"Submitted by: {user_email}\n\n"
-        f"Error:\n{error_message or 'Unknown error'}\n\n"
-        f"Log and input file are attached."
-    )
-    attachments = [p for p in [log_path, input_file_path] if p and os.path.isfile(p)]
-    send_email(SMTP_USER, subject, body, attachments=attachments)
-
-
 def send_completion_email(user_email: str, job_name: str, status: str,
                            error_message: Optional[str] = None,
                            job_id: Optional[str] = None) -> None:
@@ -119,3 +107,20 @@ def send_completion_email(user_email: str, job_name: str, status: str,
         )
 
     send_email(user_email, subject, body)
+
+
+def send_failure_admin_email(job_name: str, job_id: str, user_email: str,
+                              error_message: Optional[str],
+                              log_path: Optional[str],
+                              input_file_path: Optional[str]) -> None:
+    subject = f"[PlantBGC] Job Failed — {job_name}"
+    body = (
+        f"A PlantBGC job has failed.\n\n"
+        f"Job Name  : {job_name}\n"
+        f"Job ID    : {job_id}\n"
+        f"Submitted by: {user_email}\n\n"
+        f"Error:\n{error_message or 'Unknown error'}\n\n"
+        f"Log and input file are attached."
+    )
+    attachments = [p for p in [log_path, input_file_path] if p and os.path.isfile(p)]
+    send_email(SMTP_USER, subject, body, attachments=attachments)

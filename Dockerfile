@@ -4,9 +4,13 @@ FROM python:3.12.13
 # Set the working directory inside the container
 WORKDIR /app
 
-# Install standard Linux build tools often required by ML libraries
+# sasl2-bin and sendmail installed together (installing separately breaks SASL auth)
+# /etc/mail is bind-mounted from the host at runtime — reusing Tim's existing config
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    ca-certificates \
+    sasl2-bin \
+    sendmail \
     && rm -rf /var/lib/apt/lists/*
 
 # 1. UPDATED: Copy requirements.txt directly from your root folder

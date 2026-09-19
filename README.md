@@ -29,8 +29,11 @@ Port 8000 on the server is firewalled — only the CSC proxy IPs can reach it di
 
 ```
 SMTP_USER=bestinlalu@gmail.com
-SMTP_PASSWORD=<gmail-app-password>
 ```
+
+- `/etc/mail` on the VM — sendmail is already configured here by the sysadmin (Tim Andrews).
+  The containers bind-mount this directory read-only, reusing the existing Gmail relay config
+  and credentials. No extra setup required.
 
 To create a Gmail App Password: Google Account → Security → 2-Step Verification → App Passwords.
 
@@ -42,7 +45,7 @@ To create a Gmail App Password: Google Account → Security → 2-Step Verificat
 cd /PlantBGC
 git clone https://github.com/bestinlalu/PlantBGC.git repo
 cd repo
-cp .env.example .env      # then fill in SMTP_PASSWORD
+cp .env.example .env      # fill in SMTP_USER
 sudo mkdir -p /PlantBGC/uploads/raw /PlantBGC/uploads/results /PlantBGC/uploads/training
 sudo chmod -R 755 /PlantBGC/uploads
 sudo ./deploy.sh
