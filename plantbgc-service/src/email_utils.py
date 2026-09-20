@@ -52,7 +52,7 @@ def send_email(to_email: str, subject: str, body: str,
             ["/usr/sbin/sendmail", "-Am", "-t"],
             input=msg.as_bytes(),
             capture_output=True,
-            timeout=60,
+            timeout=30,
         )
         if result.returncode != 0:
             raise RuntimeError(result.stderr.decode())

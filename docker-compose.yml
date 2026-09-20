@@ -1,7 +1,10 @@
 services:
   bgc_web:
     build: .
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    hostname: bgc-web.plantbgc.local
+    command: >
+      bash -c "makemap hash /etc/mail/authinfo/gmail-auth < /etc/mail/authinfo/gmail-auth &&
+      uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload"
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -14,17 +17,20 @@ services:
     volumes:
       - /PlantBGC/uploads:/app/shared_uploads
       - /etc/mail/sendmail.cf:/etc/mail/sendmail.cf:ro
-      - /etc/mail/authinfo/gmail-auth.db:/etc/mail/authinfo/gmail-auth.db:ro
+      - /etc/mail/authinfo/gmail-auth:/etc/mail/authinfo/gmail-auth:ro
     depends_on:
       postgres:
         condition: service_healthy
 
   bgc_worker:
+    hostname: bgc-worker.plantbgc.local
     platform: linux/amd64          # tensorflow==1.15.4 has no ARM wheels — force x86_64 emulation
     build:
       context: .
       dockerfile: Dockerfile.bgc   # Python 3.7 — required by plantbgc (constraint: >=3.6,<3.8)
-    command: python -u -m src.bgc_runner
+    command: >
+      bash -c "makemap hash /etc/mail/authinfo/gmail-auth < /etc/mail/authinfo/gmail-auth &&
+      python -u -m src.bgc_runner"
     # Analyses can run up to ~10 hours. On SIGTERM the worker finishes its
     # current job and exits cleanly (see _handle_sigterm in bgc_runner.py) —
     # this grace period just ensures Docker doesn't SIGKILL it first.
@@ -40,7 +46,7 @@ services:
     volumes:
       - /PlantBGC/uploads:/app/shared_uploads
       - /etc/mail/sendmail.cf:/etc/mail/sendmail.cf:ro
-      - /etc/mail/authinfo/gmail-auth.db:/etc/mail/authinfo/gmail-auth.db:ro
+      - /etc/mail/authinfo/gmail-auth:/etc/mail/authinfo/gmail-auth:ro
     depends_on:
       postgres:
         condition: service_healthy
