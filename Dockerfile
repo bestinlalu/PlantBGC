@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     ca-certificates \
     sasl2-bin \
+    libsasl2-modules \
     sendmail \
     && rm -f /usr/lib/python3*/EXTERNALLY-MANAGED \
     && rm -rf /var/lib/apt/lists/* \

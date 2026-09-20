@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpng-dev \
     ca-certificates \
     sasl2-bin \
+    libsasl2-modules \
     sendmail \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /etc/mail/authinfo && chmod 700 /etc/mail/authinfo
